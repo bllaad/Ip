@@ -1,4 +1,4 @@
-name: Update Cloudflare IP Test
+name: Cloudflare IP Auto Test
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  update:
+  run-test:
 
     runs-on: ubuntu-latest
 
@@ -22,17 +22,18 @@ jobs:
         python-version: "3.11"
 
 
-    - name: Run CF speed test
+    - name: Run Cloudflare speed test
       run: python cf_test.py
 
 
-    - name: Commit results
+    - name: Commit results back to repo
       run: |
-        git config --global user.name github-actions
-        git config --global user.email actions@github.com
+
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
 
         git add *.txt history.json || true
 
-        git commit -m "Auto update Cloudflare IP test results" || true
+        git commit -m "Auto update Cloudflare IP list" || true
 
         git push
