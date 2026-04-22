@@ -1,33 +1,38 @@
-name: CF IP Auto Scan
+name: Update Cloudflare IP Test
 
 on:
   schedule:
-    - cron: "0 */2 * * *"   # 每2小时运行一次
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 jobs:
-  build:
+  update:
+
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Install requests
-        run: pip install requests
 
-      - name: Run scanner
-        run: python cf_test.py
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
 
-      - name: Commit results
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add fastest_cf_ips.txt stable_cf_ips.txt history.json
-          git commit -m "update cf ip pool" || echo "no changes"
-          git push
+
+    - name: Run CF speed test
+      run: python cf_test.py
+
+
+    - name: Commit results
+      run: |
+        git config --global user.name github-actions
+        git config --global user.email actions@github.com
+
+        git add *.txt history.json || true
+
+        git commit -m "Auto update Cloudflare IP test results" || true
+
+        git push
