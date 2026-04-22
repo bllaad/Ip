@@ -1,47 +1,86 @@
 import requests
 import time
+import random
 
-SOURCE_URL = "https://zip.cm.edu.kg/all.txt"
+# 🌐 多源IP（关键升级点）
+SOURCES = [
+    "https://zip.cm.edu.kg/all.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+    "https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt",
+    "https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt"
+]
 
 def load_ips():
-    text = requests.get(SOURCE_URL, timeout=10).text
-    return [x.strip() for x in text.splitlines() if ":" in x]
+    ips = set()
+
+    for url in SOURCES:
+        try:
+            text = requests.get(url, timeout=15).text
+            for line in text.splitlines():
+                line = line.strip()
+                if ":" in line:
+                    # 清洗非法字符
+                    ip = line.split()[0]
+                    ips.add(ip)
+        except:
+            pass
+
+    return list(ips)
+
+# 🔥 更稳定测试目标（比 ipify 稳）
+TEST_URL = "http://httpbin.org/get"
 
 def test_ip(ip):
     proxies = {
         "http": f"http://{ip}",
         "https": f"http://{ip}",
     }
+
     try:
         start = time.time()
-        r = requests.get("https://api.ipify.org", proxies=proxies, timeout=5)
+
+        r = requests.get(
+            TEST_URL,
+            proxies=proxies,
+            timeout=8
+        )
+
         latency = time.time() - start
-        return True, latency
+
+        # 二次验证（防假成功）
+        if r.status_code == 200 and "origin" in r.text:
+            return True, latency
+
+        return False, None
+
     except:
         return False, None
 
-def main():
-    ips = load_ips()
-    good = []
 
-    print(f"Total IPs: {len(ips)}")
+ips = load_ips()
+random.shuffle(ips)
 
-    for ip in ips[:200]:  # 防止GitHub跑太慢（可改）
-        ok, latency = test_ip(ip)
-        if ok:
-            print(f"[OK] {ip} {latency:.2f}s")
-            good.append((ip, latency))
-        else:
-            print(f"[FAIL] {ip}")
+print("TOTAL IPS:", len(ips))
 
-    # 排序：延迟优先
-    good.sort(key=lambda x: x[1])
+good = []
 
-    with open("good_ips.txt", "w") as f:
-        for ip, lat in good:
-            f.write(f"{ip}|{lat:.2f}\n")
+# 🔥 稳定关键：多一点测试数量
+for ip in ips[:300]:
 
-    print(f"Good IPs: {len(good)}")
+    ok, latency = test_ip(ip)
 
-if __name__ == "__main__":
-    main()
+    if ok:
+        print("[OK]", ip, round(latency, 2))
+        good.append((ip, latency))
+    else:
+        print("[FAIL]", ip)
+
+# 📊 排序（延迟优先）
+good.sort(key=lambda x: x[1])
+
+# 💾 输出结果
+with open("good_ips.txt", "w") as f:
+    for ip, lat in good:
+        f.write(f"{ip}|{lat:.2f}\n")
+
+print("\nFINAL GOOD IPS:", len(good))
