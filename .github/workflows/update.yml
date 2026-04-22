@@ -1,0 +1,29 @@
+name: CF Global Fastest IP
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Run CF scan
+        run: python cf_test.py
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add fastest_cf_ips.txt
+          git commit -m "update fastest cf ips" || echo "no change"
+          git push
