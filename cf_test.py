@@ -3,38 +3,28 @@ import ssl
 import time
 import random
 
-PORT = 443
 TIMEOUT = 2.0
-
 OUTPUT_TOP = 20
 
+# 常见 Cloudflare 端口
+PORTS = [443, 2053, 2083, 2087, 2096, 8443]
 
-# 🌍 各地区 Cloudflare 常见段（经验段）
+# 国家模拟段（经验优选段）
 REGIONS = {
 
-    "us": [
-        "104.16.", "104.17.", "104.18."
-    ],
+    "US": ["104.16.", "104.17."],
 
-    "jp": [
-        "172.64.", "172.65."
-    ],
+    "JP": ["172.64.", "172.65."],
 
-    "kr": [
-        "162.158.", "162.159."
-    ],
+    "KR": ["162.158.", "162.159."],
 
-    "sg": [
-        "188.114.", "190.93."
-    ],
+    "SG": ["188.114.", "190.93."],
 
-    "hk": [
-        "141.101.", "108.162."
-    ],
+    "HK": ["141.101.", "108.162."],
 
-    "tw": [
-        "173.245.", "198.41."
-    ]
+    "TW": ["173.245.", "198.41."],
+
+    "NL": ["103.102.228."]
 
 }
 
@@ -45,7 +35,7 @@ def generate_ips(prefixes):
 
     for prefix in prefixes:
 
-        for _ in range(80):
+        for _ in range(50):
 
             ip = (
                 prefix
@@ -59,14 +49,14 @@ def generate_ips(prefixes):
     return ips
 
 
-def tcp_latency(ip):
+def tcp_latency(ip, port):
 
     try:
 
         start = time.time()
 
         sock = socket.create_connection(
-            (ip, PORT),
+            (ip, port),
             timeout=TIMEOUT
         )
 
@@ -79,7 +69,7 @@ def tcp_latency(ip):
         return None
 
 
-def tls_latency(ip):
+def tls_latency(ip, port):
 
     try:
 
@@ -88,7 +78,7 @@ def tls_latency(ip):
         start = time.time()
 
         with socket.create_connection(
-            (ip, PORT),
+            (ip, port),
             timeout=TIMEOUT
         ) as sock:
 
@@ -108,7 +98,7 @@ def tls_latency(ip):
 
 def test_region(region, prefixes):
 
-    print("Testing region:", region)
+    print("Testing:", region)
 
     ips = generate_ips(prefixes)
 
@@ -118,27 +108,30 @@ def test_region(region, prefixes):
 
     for ip in ips:
 
-        tcp = tcp_latency(ip)
+        for port in PORTS:
 
-        if tcp is None:
-            continue
+            tcp = tcp_latency(ip, port)
 
-        tls = tls_latency(ip)
+            if tcp is None:
+                continue
 
-        if tls is None:
-            continue
+            tls = tls_latency(ip, port)
 
-        score = tcp + tls
+            if tls is None:
+                continue
 
-        results.append((ip, score, tcp, tls))
+            score = tcp + tls
 
-    results.sort(key=lambda x: x[1])
+            results.append((ip, port, score))
+
+    results.sort(key=lambda x: x[2])
 
     return results
 
 
-print("🌍 Multi-country CF scan start")
+print("🌍 Multi-country scan start")
 
+all_results = []
 
 for region, prefixes in REGIONS.items():
 
@@ -148,14 +141,22 @@ for region, prefixes in REGIONS.items():
 
     with open(filename, "w") as f:
 
-        for ip, score, tcp, tls in results[:OUTPUT_TOP]:
+        for ip, port, score in results[:OUTPUT_TOP]:
 
-            f.write(
-                f"{ip}#"
-                f"{score:.3f}#"
-                f"{tcp:.3f}#"
-                f"{tls:.3f}#cloudflare\n"
-            )
+            line = f"{ip}:{port}#{region}\n"
+
+            f.write(line)
+
+            all_results.append(line)
 
 
-print("✅ Multi-country scan done")
+# 合并输出总列表
+
+with open("fastest_all.txt", "w") as f:
+
+    for line in all_results:
+
+        f.write(line)
+
+
+print("✅ Done")
